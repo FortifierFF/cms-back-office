@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Loader } from '@/components/ui/loader'
 import { EditTagModal } from '@/components/EditTagModal'
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCompany } from '@/contexts/CompanyContext'
+import { useCompany } from '@/hooks/useCompany'
+import { toast } from '@/lib/toast'
 import { Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 // form schema
@@ -41,6 +43,10 @@ export function TagsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<Tag | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [tagToDelete, setTagToDelete] = useState<Tag | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Check if user has permission to create tags
   const canCreate = user?.permissions?.includes('blog.create') ?? false
@@ -142,20 +148,36 @@ export function TagsPage() {
     setEditingTag(null)
   }
 
-  const handleDeleteClick = async (tag: Tag) => {
-    if (!selectedCompany) return
+  // open delete confirmation modal
+  const handleDeleteClick = (tag: Tag) => {
+    setTagToDelete(tag)
+    setIsDeleteModalOpen(true)
+  }
 
-    // confirm deletion
-    if (!window.confirm(`Are you sure you want to delete "${tag.name}"?`)) {
-      return
-    }
+  // handle confirmed deletion
+  const handleDeleteConfirm = async () => {
+    if (!selectedCompany || !tagToDelete) return
 
+    setIsDeleting(true)
     try {
-      await blogService.deleteTag(selectedCompany.id, tag.id)
+      await blogService.deleteTag(selectedCompany.id, tagToDelete.id)
+      toast.success('Tag deleted', `"${tagToDelete.name}" has been deleted successfully.`)
       fetchTags() // refresh the tags list
+      setTagToDelete(null)
     } catch (err) {
       console.error('Failed to delete tag:', err)
-      alert('Failed to delete tag. Please try again.')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete tag. Please try again.'
+      toast.error('Delete failed', errorMessage)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // close delete modal
+  const handleDeleteModalClose = () => {
+    if (!isDeleting) {
+      setIsDeleteModalOpen(false)
+      setTagToDelete(null)
     }
   }
 
@@ -439,6 +461,18 @@ export function TagsPage() {
           onSuccess={handleEditSuccess}
           companyId={selectedCompany.id}
           tag={editingTag}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {canUpdate && tagToDelete && (
+        <DeleteConfirmationModal
+          open={isDeleteModalOpen}
+          onOpenChange={handleDeleteModalClose}
+          itemName={tagToDelete.name}
+          itemType="tag"
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
         />
       )}
     </div>

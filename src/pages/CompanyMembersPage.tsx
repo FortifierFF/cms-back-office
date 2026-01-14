@@ -8,7 +8,7 @@ import { Loader } from '@/components/ui/loader'
 import { CreateMemberModal } from '@/components/CreateMemberModal'
 import { EditMemberModal } from '@/components/EditMemberModal'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCompany } from '@/contexts/CompanyContext'
+import { useCompany } from '@/hooks/useCompany'
 import { formatPermissionLabel } from '@/services/permissions/permissionsService'
 import { Users, Mail, Shield, CheckCircle, XCircle, Plus, Edit } from 'lucide-react'
 

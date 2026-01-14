@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { PostModal } from '@/components/PostModal'
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCompany } from '@/contexts/CompanyContext'
+import { useCompany } from '@/hooks/useCompany'
+import { toast } from '@/lib/toast'
 import { Plus, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown, User } from 'lucide-react'
 
 // filter type
@@ -31,6 +33,10 @@ export function PostsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null)
+  // delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [postToDelete, setPostToDelete] = useState<BlogPost | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   // track which post rows have expanded categories/tags
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set())
@@ -116,20 +122,36 @@ export function PostsPage() {
     setEditingPost(null)
   }
 
-  const handleDeleteClick = async (post: BlogPost) => {
-    if (!selectedCompany) return
+  // open delete confirmation modal
+  const handleDeleteClick = (post: BlogPost) => {
+    setPostToDelete(post)
+    setIsDeleteModalOpen(true)
+  }
 
-    // confirm deletion
-    if (!window.confirm(`Are you sure you want to delete "${post.title}"?`)) {
-      return
-    }
+  // handle confirmed deletion
+  const handleDeleteConfirm = async () => {
+    if (!selectedCompany || !postToDelete) return
 
+    setIsDeleting(true)
     try {
-      await blogService.delete(selectedCompany.id, post.id)
+      await blogService.delete(selectedCompany.id, postToDelete.id)
+      toast.success('Post deleted', `"${postToDelete.title}" has been deleted successfully.`)
       fetchPosts() // refresh the posts list
+      setPostToDelete(null)
     } catch (err) {
       console.error('Failed to delete post:', err)
-      alert('Failed to delete post. Please try again.')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete post. Please try again.'
+      toast.error('Delete failed', errorMessage)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // close delete modal
+  const handleDeleteModalClose = () => {
+    if (!isDeleting) {
+      setIsDeleteModalOpen(false)
+      setPostToDelete(null)
     }
   }
 
@@ -402,6 +424,9 @@ export function PostsPage() {
                       Tags
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Views
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <button
                         onClick={() => handleSortClick('date')}
                         className="flex items-center gap-2 hover:text-gray-700"
@@ -420,7 +445,7 @@ export function PostsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedPosts.length === 0 ? (
                     <tr>
-                      <td colSpan={canEdit ? 6 : 5} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={canEdit ? 7 : 6} className="px-6 py-8 text-center text-gray-500">
                         No posts found.
                       </td>
                     </tr>
@@ -502,6 +527,11 @@ export function PostsPage() {
                             </div>
                           </td>
 
+                          {/* Views */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-gray-900">{post.views || 0}</span>
+                          </td>
+
                           {/* Status */}
                           <td className="px-6 py-4 whitespace-nowrap">
                             {getStatusBadge(post.status, post.published_at || undefined)}
@@ -559,6 +589,18 @@ export function PostsPage() {
           companyId={selectedCompany.id}
           post={editingPost || null}
         />
+
+        {/* Delete Confirmation Modal */}
+        {canDelete && postToDelete && (
+          <DeleteConfirmationModal
+            open={isDeleteModalOpen}
+            onOpenChange={handleDeleteModalClose}
+            itemName={postToDelete.title}
+            itemType="post"
+            onConfirm={handleDeleteConfirm}
+            isDeleting={isDeleting}
+          />
+        )}
       </div>
     </div>
   )

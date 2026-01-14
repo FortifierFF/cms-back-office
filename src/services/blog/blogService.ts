@@ -73,6 +73,7 @@ export interface BlogPost {
   featured_image_url?: string | null
   meta_title?: string | null
   meta_description?: string | null
+  breaking: boolean // flag for breaking news
   created_at: string
   updated_at: string
   categories: Category[] // array of categories (can be empty)
@@ -83,7 +84,10 @@ export interface BlogPost {
 export interface CreateBlogPostPayload {
   title: string
   content: string
+  slug?: string // optional slug (if not provided, backend may auto-generate from title)
   status?: 'draft' | 'published'
+  allow_comments?: boolean // whether comments are allowed (default: true)
+  breaking?: boolean // flag for breaking news (default: false)
   categoryIds?: string[] // array of category IDs
   tagIds?: string[] // array of tag IDs
   featured_image_url?: string | null // URL of featured image (snake_case for backend)
@@ -93,7 +97,10 @@ export interface CreateBlogPostPayload {
 export interface UpdateBlogPostPayload {
   title?: string
   content?: string
+  slug?: string // optional slug
   status?: 'draft' | 'published'
+  allow_comments?: boolean // whether comments are allowed
+  breaking?: boolean // flag for breaking news
   categoryIds?: string[]
   tagIds?: string[]
   featured_image_url?: string | null // URL of featured image (snake_case for backend)

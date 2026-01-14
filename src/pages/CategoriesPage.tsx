@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Loader } from '@/components/ui/loader'
 import { EditCategoryModal } from '@/components/EditCategoryModal'
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCompany } from '@/contexts/CompanyContext'
+import { useCompany } from '@/hooks/useCompany'
+import { toast } from '@/lib/toast'
 import { Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 // form schema
@@ -42,6 +44,10 @@ export function CategoriesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Check if user has permission to create categories
   const canCreate = user?.permissions?.includes('blog.create') ?? false
@@ -149,20 +155,36 @@ export function CategoriesPage() {
     setEditingCategory(null)
   }
 
-  const handleDeleteClick = async (category: Category) => {
-    if (!selectedCompany) return
+  // open delete confirmation modal
+  const handleDeleteClick = (category: Category) => {
+    setCategoryToDelete(category)
+    setIsDeleteModalOpen(true)
+  }
 
-    // confirm deletion
-    if (!window.confirm(`Are you sure you want to delete "${category.name}"?`)) {
-      return
-    }
+  // handle confirmed deletion
+  const handleDeleteConfirm = async () => {
+    if (!selectedCompany || !categoryToDelete) return
 
+    setIsDeleting(true)
     try {
-      await blogService.deleteCategory(selectedCompany.id, category.id)
+      await blogService.deleteCategory(selectedCompany.id, categoryToDelete.id)
+      toast.success('Category deleted', `"${categoryToDelete.name}" has been deleted successfully.`)
       fetchCategories() // refresh the categories list
+      setCategoryToDelete(null)
     } catch (err) {
       console.error('Failed to delete category:', err)
-      alert('Failed to delete category. Please try again.')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete category. Please try again.'
+      toast.error('Delete failed', errorMessage)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // close delete modal
+  const handleDeleteModalClose = () => {
+    if (!isDeleting) {
+      setIsDeleteModalOpen(false)
+      setCategoryToDelete(null)
     }
   }
 
@@ -485,6 +507,18 @@ export function CategoriesPage() {
           companyId={selectedCompany.id}
           category={editingCategory}
           categories={categories}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {canUpdate && categoryToDelete && (
+        <DeleteConfirmationModal
+          open={isDeleteModalOpen}
+          onOpenChange={handleDeleteModalClose}
+          itemName={categoryToDelete.name}
+          itemType="category"
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
         />
       )}
     </div>

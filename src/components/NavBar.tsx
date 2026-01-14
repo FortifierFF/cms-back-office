@@ -3,7 +3,7 @@
 // Shows Create Company button for master accounts
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useCompany } from '@/contexts/CompanyContext'
+import { useCompany } from '@/hooks/useCompany'
 import { CreateCompanyModal } from '@/components/CreateCompanyModal'
 import { Button } from '@/components/ui/button'
 import { ChevronDown, Plus } from 'lucide-react'

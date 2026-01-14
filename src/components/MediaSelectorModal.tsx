@@ -16,7 +16,9 @@ import mediaService, {
   type MediaListParams,
   type CreateMediaPayload,
 } from '@/services/media/mediaService'
-import { useCompany } from '@/contexts/CompanyContext'
+import { useCompany } from '@/hooks/useCompany'
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal'
+import { toast } from '@/lib/toast'
 import { Upload, Image as ImageIcon, Video, File, Search, Loader2, Trash2 } from 'lucide-react'
 
 // props for the media selector modal
@@ -75,6 +77,9 @@ export function MediaSelectorModal({
   const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'video' | 'document'>('all')
   const [sortBy, setSortBy] = useState<'created_at' | 'file_name' | 'file_size'>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  // delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   // pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -367,17 +372,20 @@ export function MediaSelectorModal({
     }
   }
 
-  // handle delete media
-  const handleDeleteMedia = async () => {
+  // open delete confirmation modal
+  const handleDeleteClick = () => {
+    if (!selectedMedia) return
+    setIsDeleteModalOpen(true)
+  }
+
+  // handle confirmed deletion
+  const handleDeleteConfirm = async () => {
     if (!selectedMedia || !companyId) return
 
-    // confirm deletion
-    if (!window.confirm(`Are you sure you want to delete "${selectedMedia.file_name}"? This action cannot be undone.`)) {
-      return
-    }
-
+    setIsDeleting(true)
     try {
       await mediaService.deleteMedia(companyId, selectedMedia.id)
+      toast.success('Media deleted', `"${selectedMedia.file_name}" has been deleted successfully.`)
       // remove from list
       setMediaList((prev) => prev.filter((m) => m.id !== selectedMedia.id))
       // clear selection
@@ -390,7 +398,18 @@ export function MediaSelectorModal({
       })
     } catch (err) {
       console.error('Failed to delete media:', err)
-      setError(err instanceof Error ? err.message : 'Failed to delete media')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete media'
+      setError(errorMessage)
+      toast.error('Delete failed', errorMessage)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // close delete modal
+  const handleDeleteModalClose = () => {
+    if (!isDeleting) {
+      setIsDeleteModalOpen(false)
     }
   }
 
@@ -769,7 +788,7 @@ export function MediaSelectorModal({
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleDeleteMedia}
+                        onClick={handleDeleteClick}
                         className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
@@ -789,6 +808,19 @@ export function MediaSelectorModal({
           </div>
         )}
       </DialogContent>
+
+      {/* Delete Confirmation Modal */}
+      {selectedMedia && (
+        <DeleteConfirmationModal
+          open={isDeleteModalOpen}
+          onOpenChange={handleDeleteModalClose}
+          itemName={selectedMedia.file_name}
+          itemType="media file"
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
+          description={`Are you sure you want to delete "${selectedMedia.file_name}"? This action cannot be undone.`}
+        />
+      )}
     </Dialog>
   )
 }

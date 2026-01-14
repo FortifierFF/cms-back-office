@@ -30,8 +30,11 @@ import { Image as ImageIcon, X } from 'lucide-react'
 // unified schema for both create and edit
 const postSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be 200 characters or less'),
+  slug: z.string().optional(), // optional slug (backend may auto-generate if not provided)
   content: z.string().min(1, 'Content is required'),
   status: z.enum(['draft', 'published'], { message: 'Status must be draft or published' }),
+  allow_comments: z.boolean(), // required boolean
+  breaking: z.boolean(), // required boolean
   categoryIds: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
 })
@@ -78,8 +81,11 @@ export function PostModal({
     resolver: zodResolver(postSchema),
     defaultValues: {
       title: post?.title || '',
+      slug: post?.slug || '',
       content: post?.content || '',
       status: post?.status || 'draft',
+      allow_comments: post?.allow_comments ?? false, // default to false if not set
+      breaking: post?.breaking ?? false, // default to false if not set
       categoryIds: post?.categories ? post.categories.map((c) => c.id) : [],
       tagIds: post?.tags ? post.tags.map((t) => t.id) : [],
     },
@@ -94,8 +100,11 @@ export function PostModal({
     if (post) {
       reset({
         title: post.title,
+        slug: post.slug || '',
         content: post.content,
         status: post.status,
+        allow_comments: post.allow_comments ?? false,
+        breaking: post.breaking ?? false,
         categoryIds: (post.categories || []).map((c) => c.id),
         tagIds: (post.tags || []).map((t) => t.id),
       })
@@ -111,8 +120,11 @@ export function PostModal({
       // reset to defaults for create mode
       reset({
         title: '',
+        slug: '',
         content: '',
         status: 'draft',
+        allow_comments: false,
+        breaking: false,
         categoryIds: [],
         tagIds: [],
       })
@@ -264,6 +276,15 @@ export function PostModal({
           status: data.status,
         }
 
+        // include slug if provided
+        if (data.slug && data.slug.trim()) {
+          payload.slug = data.slug.trim()
+        }
+
+        // include allow_comments and breaking flags
+        payload.allow_comments = data.allow_comments ?? false
+        payload.breaking = data.breaking ?? false
+
         // only include categoryIds if there are selected categories
         if (data.categoryIds && data.categoryIds.length > 0) {
           payload.categoryIds = data.categoryIds
@@ -293,6 +314,15 @@ export function PostModal({
           content: data.content.trim(),
           status: data.status,
         }
+
+        // include slug if provided
+        if (data.slug && data.slug.trim()) {
+          payload.slug = data.slug.trim()
+        }
+
+        // include allow_comments and breaking flags
+        payload.allow_comments = data.allow_comments ?? false
+        payload.breaking = data.breaking ?? false
 
         // only include categoryIds if there are selected categories
         if (data.categoryIds && data.categoryIds.length > 0) {
@@ -478,6 +508,26 @@ export function PostModal({
                 )}
               </div>
 
+              {/* Slug */}
+              <div className="space-y-2 mb-6">
+                <label htmlFor="slug" className="text-sm font-medium text-gray-700">
+                  Slug (Optional)
+                </label>
+                <Input
+                  id="slug"
+                  type="text"
+                  placeholder="post-url-slug"
+                  {...register('slug')}
+                  className={errors.slug ? 'border-red-500' : ''}
+                />
+                {errors.slug && (
+                  <p className="text-sm text-red-500">{errors.slug.message}</p>
+                )}
+                <p className="text-xs text-gray-500">
+                  Leave empty to auto-generate from title
+                </p>
+              </div>
+
               {/* Categories */}
               <div className="space-y-2 mb-6">
                 <label className="text-sm font-medium text-gray-700">
@@ -534,6 +584,40 @@ export function PostModal({
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Allow Comments */}
+              <div className="space-y-2 mb-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    {...register('allow_comments')}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Allow Comments
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 ml-6">
+                  Allow users to comment on this post
+                </p>
+              </div>
+
+              {/* Breaking News */}
+              <div className="space-y-2 mb-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    {...register('breaking')}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Breaking News
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 ml-6">
+                  Mark this post as breaking news
+                </p>
               </div>
 
               {/* Status */}
